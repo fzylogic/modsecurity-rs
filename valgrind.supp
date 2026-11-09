@@ -1,0 +1,39 @@
+# Valgrind suppressions for modsecurity-rs.
+#
+# Keep this file minimal: every entry here is a memory report the test suite
+# will no longer show you. Each one records what was investigated and why it is
+# not ours. Regenerate candidates with:
+#
+#   valgrind --leak-check=full --gen-suppressions=all <test binary>
+
+# The Rust test harness lazily allocates a `std::thread::Thread` for the main
+# thread when libtest's result channel first parks. The only pointer to it ends
+# up in a thread-local whose registration Memcheck cannot follow, so the block
+# is reported as "possibly lost" at exit. It belongs to libtest, is allocated
+# once, and is unrelated to this crate. The mangled frame carries a
+# compiler-version hash, hence the wildcards.
+{
+   rust-libtest-main-thread-handle
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   ...
+   fun:*3std6thread7current12init_current*
+   ...
+}
+
+# --- Template for upstream noise -------------------------------------------
+#
+# libmodsecurity 3.0.12 on Debian/Ubuntu reports no definite or indirect leaks
+# under this suite, so nothing is suppressed for it here. If another build or
+# platform does (libxml2, PCRE and curl global state are the usual sources),
+# add a narrowly scoped entry rather than widening the one above. For example:
+#
+# {
+#    libmodsecurity-global-state
+#    Memcheck:Leak
+#    match-leak-kinds: definite
+#    ...
+#    obj:*/libmodsecurity.so.3*
+#    ...
+# }
